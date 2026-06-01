@@ -5,20 +5,18 @@ interface EngagementBarProps {
 
 export function EngagementBar({ rate, maxRate }: EngagementBarProps) {
   const pct = maxRate > 0 ? Math.min((rate / maxRate) * 100, 100) : 0
-  const color = rate >= 5 ? '#22c55e' : rate >= 2 ? '#eab308' : '#ef4444'
+  const colorClass = rate >= 5 ? 'bg-[#2D6A4F]' : rate >= 2 ? 'bg-[#D4A017]' : 'bg-[#8B3A1A]'
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Engagement Rate</span>
-        <span className="text-sm font-bold text-white">{rate.toFixed(4)}%</span>
-      </div>
-      <div className="h-3 overflow-hidden rounded-full bg-gray-800">
+    <div>
+      <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-[#8B3A1A]">Engagement Rate</span>
+      <div className="h-3 w-full bg-[#E8E0D0]">
         <div
-          className="h-full rounded-full"
-          style={{ width: `${pct}%`, backgroundColor: color, transition: 'width 0.8s ease-out' }}
+          className={`h-full transition-all duration-1000 ease-out ${colorClass}`}
+          style={{ width: `${pct}%` }}
         />
       </div>
+      <span className="mt-1 block text-sm font-bold text-[#1C1208]">{rate.toFixed(4)}%</span>
     </div>
   )
 }

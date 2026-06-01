@@ -1,9 +1,10 @@
-import { FormEvent } from 'react'
-import { Loader2, PlayCircle } from 'lucide-react'
+import { FormEvent, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { processVideos } from '../api'
 import { useAppStore } from '../store'
 
 export function VideoInputForm() {
+  const [progressMsg, setProgressMsg] = useState('')
   const {
     urlA,
     urlB,
@@ -24,49 +25,53 @@ export function VideoInputForm() {
       return
     }
 
-    setIsProcessing(true)
     setProcessingError('')
+    setIsProcessing(true)
+    setProgressMsg('Fetching video metadata and transcripts...')
+    await new Promise((r) => setTimeout(r, 2000))
+    setProgressMsg('Chunking and embedding transcripts into vector DB...')
+    await new Promise((r) => setTimeout(r, 1000))
+    setProgressMsg('Building RAG index...')
     try {
       const result = await processVideos(urlA.trim(), urlB.trim())
       setProcessingResult(result.session_id, result.video_a, result.video_b)
       setActiveTab('compare')
+      setProgressMsg('')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to process videos'
       setProcessingError(message)
+      setProgressMsg('')
     } finally {
       setIsProcessing(false)
     }
   }
 
   return (
-    <section className="mx-auto max-w-5xl">
-      <form onSubmit={handleSubmit} className="rounded-lg border border-gray-800 bg-gray-900 p-6 shadow-2xl shadow-black/30">
-        <div className="mb-7 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight text-white">VideoIQ</h1>
-            <p className="mt-2 text-base text-gray-400">RAG-Powered Creator Analytics</p>
-          </div>
-          <PlayCircle className="h-10 w-10 text-blue-400" />
+    <section>
+      <form onSubmit={handleSubmit} className="animate-fade-in-up mx-auto max-w-2xl border border-[#D4C9B0] bg-white p-12 shadow-sm">
+        <div className="mb-10">
+          <h1 className="mb-2 text-4xl font-bold text-[#1C1208]">Analyze Your Videos</h1>
+          <p className="text-sm font-bold uppercase tracking-widest text-[#8B3A1A]">RAG-Powered Creator Analytics</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="space-y-2">
-            <span className="text-sm font-semibold text-gray-300">Video A</span>
+        <div className="space-y-8">
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-[#8B3A1A]">Video A</span>
             <input
               value={urlA}
               onChange={(event) => setUrlA(event.target.value)}
               placeholder="YouTube URL (e.g. youtube.com/watch?v=...)"
-              className="w-full rounded-md border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+              className="w-full border-0 border-b-2 border-[#D4C9B0] bg-transparent py-4 text-lg text-[#1C1208] outline-none transition-colors placeholder:text-[#9B8E7E] focus:border-[#8B3A1A] focus:outline-none"
               disabled={isProcessing}
             />
           </label>
-          <label className="space-y-2">
-            <span className="text-sm font-semibold text-gray-300">Video B</span>
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-[#8B3A1A]">Video B</span>
             <input
               value={urlB}
               onChange={(event) => setUrlB(event.target.value)}
               placeholder="Instagram Reel URL (e.g. instagram.com/reel/...)"
-              className="w-full rounded-md border border-gray-700 bg-gray-950 px-4 py-3 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+              className="w-full border-0 border-b-2 border-[#D4C9B0] bg-transparent py-4 text-lg text-[#1C1208] outline-none transition-colors placeholder:text-[#9B8E7E] focus:border-[#8B3A1A] focus:outline-none"
               disabled={isProcessing}
             />
           </label>
@@ -75,14 +80,20 @@ export function VideoInputForm() {
         <button
           type="submit"
           disabled={isProcessing}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-300"
+          className="mt-10 inline-flex w-full items-center justify-center gap-2 bg-[#1C1208] px-12 py-4 text-sm font-bold uppercase tracking-widest text-[#F5F0E8] transition-colors duration-300 hover:bg-[#8B3A1A] disabled:cursor-not-allowed disabled:bg-[#9B8E7E]"
         >
           {isProcessing && <Loader2 className="h-5 w-5 animate-spin" />}
           {isProcessing ? 'Processing...' : 'Analyze Videos'}
         </button>
 
+        {progressMsg && (
+          <p className="mt-3 text-sm italic text-[#8B3A1A]">
+            {progressMsg}
+          </p>
+        )}
+
         {processingError && (
-          <p className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <p className="mt-3 text-sm text-[#8B3A1A]">
             {processingError}
           </p>
         )}

@@ -59,28 +59,26 @@ export function ChatPanel() {
   }
 
   return (
-    <section className="mx-auto flex h-[calc(100vh-130px)] max-w-5xl flex-col overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 px-5 py-4">
+    <section className="mx-auto flex h-[calc(100vh-150px)] max-w-5xl flex-col overflow-hidden border border-[#D4C9B0] bg-[#F5F0E8]">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D4C9B0] bg-white px-8 py-5">
         <div>
-          <h1 className="text-xl font-bold">Chat with your videos</h1>
-          <p className="mt-1 text-sm text-gray-400">Ask for hook, content, and performance analysis.</p>
+          <h1 className="text-sm font-bold uppercase tracking-widest text-[#1C1208]">CHAT WITH YOUR VIDEOS</h1>
         </div>
-        <span className="rounded-full bg-gray-950 px-3 py-1 text-xs font-semibold text-gray-300 ring-1 ring-gray-800">
+        <span className="border border-[#D4C9B0] px-3 py-1 text-xs font-bold tracking-widest text-[#7A6A55]">
           Session {sessionId?.slice(0, 8)}
         </span>
       </header>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+      <div className="flex-1 space-y-4 overflow-y-auto bg-[#F5F0E8] px-8 py-6">
         {messages.length === 0 && (
           <div className="mx-auto max-w-3xl">
-            <p className="mb-3 text-sm font-semibold text-gray-400">Try asking:</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((suggestion) => (
+            <div className="grid gap-3">
+              {suggestions.map((suggestion, index) => (
                 <button
                   key={suggestion}
                   onClick={() => sendMessage(suggestion)}
                   disabled={isStreaming}
-                  className="rounded-full border border-gray-700 bg-gray-950 px-4 py-2 text-left text-sm text-gray-200 transition hover:border-blue-500 hover:text-white disabled:opacity-50"
+                  className={`animate-fade-in-up w-full border border-[#D4C9B0] bg-white px-4 py-3 text-left text-sm text-[#1C1208] transition-colors hover:border-[#8B3A1A] hover:text-[#8B3A1A] disabled:opacity-50 stagger-${Math.min(index + 1, 4)}`}
                 >
                   {suggestion}
                 </button>
@@ -95,7 +93,7 @@ export function ChatPanel() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-gray-800 bg-gray-950 p-4">
+      <div className="border-t border-[#D4C9B0] bg-white px-8 py-5">
         <div className="flex items-end gap-3">
           <textarea
             value={draft}
@@ -104,12 +102,12 @@ export function ChatPanel() {
             rows={1}
             disabled={isStreaming}
             placeholder="Ask about performance, hooks, creators, or improvements..."
-            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-md border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60"
+            className="max-h-32 min-h-[54px] flex-1 resize-none border border-[#D4C9B0] bg-[#F5F0E8] p-4 text-base text-[#1C1208] outline-none transition-colors placeholder:text-[#9B8E7E] focus:border-[#8B3A1A] focus:outline-none disabled:opacity-60"
           />
           <button
             onClick={() => sendMessage(draft)}
             disabled={isStreaming || !draft.trim()}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-700"
+            className="inline-flex shrink-0 items-center justify-center bg-[#1C1208] px-6 py-4 text-[#F5F0E8] transition-colors hover:bg-[#8B3A1A] disabled:cursor-not-allowed disabled:bg-[#9B8E7E]"
             aria-label="Send message"
           >
             <Send className="h-5 w-5" />

@@ -19,12 +19,12 @@ function TabButton({ tab, label, disabled = false }: TabButtonProps) {
     <button
       onClick={() => !disabled && setActiveTab(tab)}
       disabled={disabled}
-      className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+      className={`border-b-2 px-1 py-2 text-sm font-bold uppercase tracking-widest transition-colors ${
         isActive
-          ? 'bg-blue-600 text-white'
+          ? 'border-[#8B3A1A] text-[#1C1208]'
           : disabled
-            ? 'cursor-not-allowed bg-gray-900 text-gray-600'
-            : 'bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white'
+            ? 'cursor-not-allowed border-transparent text-[#B6A994]'
+            : 'border-transparent text-[#1C1208] hover:border-[#D4C9B0] hover:text-[#8B3A1A]'
       }`}
     >
       {label}
@@ -36,20 +36,25 @@ function App() {
   const { activeTab, sessionId, videoA, videoB } = useAppStore()
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="flex items-center justify-between gap-4 border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl font-black tracking-tight">VideoIQ</span>
-          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold">RAG</span>
+    <div className="min-h-screen bg-[#F5F0E8] text-[#1C1208]">
+      <header className="flex items-center justify-between gap-4 border-b border-[#D4C9B0] bg-white px-10 py-5">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="text-4xl font-bold tracking-widest text-[#1C1208]">VIDEOIQ</span>
+            <span className="border border-[#8B3A1A] px-2 py-0.5 text-xs font-bold tracking-widest text-[#8B3A1A]">RAG</span>
+          </div>
+          <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[#8B3A1A]">
+            MATCH THE VIDEO. PROVE THE PERFORMANCE.
+          </p>
         </div>
-        <nav className="flex gap-2">
+        <nav className="flex gap-6">
           <TabButton tab="setup" label="Setup" />
           <TabButton tab="compare" label="Compare" disabled={!sessionId} />
           <TabButton tab="chat" label="Chat" disabled={!sessionId} />
         </nav>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-8 py-12">
         {activeTab === 'setup' && <VideoInputForm />}
         {activeTab === 'compare' && videoA && videoB && <VideoComparison />}
         {activeTab === 'chat' && <ChatPanel />}

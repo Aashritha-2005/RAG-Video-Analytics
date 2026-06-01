@@ -8,7 +8,10 @@ const API_BASE: string =
 export async function processVideos(urlA: string, urlB: string): Promise<ProcessResponse> {
   const res = await fetch(`${API_BASE}/process`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true'
+    },
     body: JSON.stringify({ url_a: urlA, url_b: urlB })
   })
   if (!res.ok) {
@@ -28,7 +31,10 @@ export function streamChat(
 ): void {
   fetch(`${API_BASE}/chat/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true'
+    },
     body: JSON.stringify({ session_id: sessionId, message })
   }).then(async (res) => {
     if (!res.ok) throw new Error('Stream request failed')
