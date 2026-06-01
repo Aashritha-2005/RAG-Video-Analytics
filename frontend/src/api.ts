@@ -1,6 +1,9 @@
 import { Citation, ProcessResponse } from './types'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+const API_BASE: string =
+  (window as unknown as Record<string, string>).__BACKEND_URL__ ||
+  import.meta.env.VITE_API_URL ||
+  'http://127.0.0.1:8000'
 
 export async function processVideos(urlA: string, urlB: string): Promise<ProcessResponse> {
   const res = await fetch(`${API_BASE}/process`, {
