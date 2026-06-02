@@ -2,20 +2,46 @@ import os
 from typing import Dict, List
 
 import chromadb
+import requests
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_core.embeddings import Embeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from models import VideoMetadata
 
 
+class GoogleEmbeddings(Embeddings):
+    def __init__(self) -> None:
+        self.api_key = os.getenv("GOOGLE_API_KEY")
+        self.model = "text-embedding-004"
+        self.url = (
+            f"https://generativelanguage.googleapis.com/v1/models/"
+            f"{self.model}:embedContent?key={self.api_key}"
+        )
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self._embed(text) for text in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._embed(text)
+
+    def _embed(self, text: str) -> List[float]:
+        resp = requests.post(
+            self.url,
+            json={
+                "model": f"models/{self.model}",
+                "content": {"parts": [{"text": text}]},
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()["embedding"]["values"]
+
+
 class Embedder:
     def __init__(self) -> None:
-        self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
-        )
+        self.embeddings = GoogleEmbeddings()
         self.chroma_client = chromadb.PersistentClient(
             path=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
         )

@@ -3,10 +3,9 @@ import json
 import os
 from typing import AsyncGenerator, Dict, List
 
-from langchain.memory import ConversationBufferWindowMemory
 from langchain_groq import ChatGroq
 from langchain_core.documents import Document
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from embedder import Embedder
 from models import Citation, VideoMetadata
@@ -19,17 +18,12 @@ class RAGChain:
             api_key=os.getenv("GROQ_API_KEY"),
         )
         self.embedder = embedder_instance
-        self._memories: Dict[str, ConversationBufferWindowMemory] = {}
+        self._histories: Dict[str, List] = {}
         self._session_metadata: Dict[str, dict] = {}
 
     def register_session(self, session_id: str, video_a: VideoMetadata, video_b: VideoMetadata) -> None:
         self._session_metadata[session_id] = {"A": video_a, "B": video_b}
-        self._memories[session_id] = ConversationBufferWindowMemory(
-            k=10,
-            memory_key="chat_history",
-            return_messages=True,
-            output_key="answer",
-        )
+        self._histories[session_id] = []
 
     def _build_system_context(self, session_id: str) -> str:
         if session_id not in self._session_metadata:
@@ -71,8 +65,7 @@ Use retrieved transcript chunks to support your analysis"""
             ]
         )
 
-        memory = self._memories.get(session_id)
-        history_messages = memory.chat_memory.messages if memory else []
+        history_messages = self._histories.get(session_id, [])
         history_str = "\n".join(
             [
                 f"{'Human' if m.type == 'human' else 'Assistant'}: {m.content}"
@@ -104,8 +97,10 @@ Answer in a concise but useful way. Include citations inline as [Video A] or [Vi
         answer = "".join(answer_parts).strip()
         citations = self._build_citations(docs)
 
-        if memory:
-            memory.save_context({"input": question}, {"answer": answer})
+        self._histories.setdefault(session_id, [])
+        self._histories[session_id].append(HumanMessage(content=question))
+        self._histories[session_id].append(AIMessage(content=answer))
+        self._histories[session_id] = self._histories[session_id][-20:]
 
         citation_payload = {
             "citations": [citation.model_dump() for citation in citations],
