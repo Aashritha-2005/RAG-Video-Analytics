@@ -2,9 +2,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import instaloader
 import yt_dlp
-from instaloader import Post
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from models import VideoMetadata
@@ -64,24 +62,20 @@ class VideoProcessor:
         )
 
     def extract_instagram(self, url: str, video_id: str) -> VideoMetadata:
-        shortcode = self._parse_instagram_shortcode(url)
         try:
-            return self._extract_instagram_instaloader(url, video_id, shortcode)
-        except Exception as instaloader_exc:
-            try:
-                return self._extract_instagram_ytdlp(url, video_id)
-            except Exception as ytdlp_exc:
-                raise VideoProcessingError(
-                    {
-                        "video_id": video_id,
-                        "url": url,
-                        "platform": "instagram",
-                        "errors": {
-                            "instaloader": str(instaloader_exc),
-                            "yt_dlp": str(ytdlp_exc),
-                        },
-                    }
-                ) from ytdlp_exc
+            self._parse_instagram_shortcode(url)
+            return self._extract_instagram_ytdlp(url, video_id)
+        except Exception as ytdlp_exc:
+            raise VideoProcessingError(
+                {
+                    "video_id": video_id,
+                    "url": url,
+                    "platform": "instagram",
+                    "errors": {
+                        "yt_dlp": str(ytdlp_exc),
+                    },
+                }
+            ) from ytdlp_exc
 
     def process_video(self, url: str, video_id: str) -> VideoMetadata:
         try:
@@ -102,53 +96,6 @@ class VideoProcessor:
                     },
                 }
             ) from exc
-
-    def _extract_instagram_instaloader(self, url: str, video_id: str, shortcode: str) -> VideoMetadata:
-        loader = instaloader.Instaloader(
-            quiet=True,
-            download_videos=False,
-            download_video_thumbnails=False,
-            save_metadata=False,
-        )
-        post = Post.from_shortcode(loader.context, shortcode)
-
-        caption = post.caption or ""
-        username = post.owner_username or "Unknown creator"
-        transcript = caption.strip()
-        if len(transcript) < 20:
-            raise ValueError("Instagram caption/transcript unavailable. Whisper fallback is disabled on Render.")
-
-        likes = self._safe_int(post.likes)
-        comments = self._safe_int(post.comments)
-        views = self._safe_int(getattr(post, "video_view_count", None))
-        follower_count = None
-        follower_count_note = None
-        try:
-            follower_count = self._optional_int(post.owner_profile.followers)
-        except Exception:
-            follower_count_note = "unavailable without auth"
-
-        hashtags = re.findall(r"#\w+", caption)
-        title = caption.strip()[:80] if caption.strip() else f"Instagram Reel by {username}"
-        upload_date = post.date_utc.strftime("%Y-%m-%d") if post.date_utc else ""
-
-        return VideoMetadata(
-            video_id=video_id,
-            url=url,
-            platform="instagram",
-            title=title,
-            creator=username,
-            follower_count=follower_count,
-            follower_count_note=follower_count_note,
-            views=views,
-            likes=likes,
-            comments=comments,
-            hashtags=hashtags,
-            upload_date=upload_date,
-            duration_seconds=self._safe_int(getattr(post, "video_duration", None)),
-            engagement_rate=self._engagement_rate(likes, comments, views),
-            transcript=transcript or title,
-        )
 
     def _extract_instagram_ytdlp(self, url: str, video_id: str) -> VideoMetadata:
         ydl_opts = {"quiet": True, "skip_download": True}
