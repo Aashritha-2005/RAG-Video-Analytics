@@ -4,7 +4,7 @@ import os
 from typing import AsyncGenerator, Dict, List
 
 from langchain.memory import ConversationBufferWindowMemory
-from langchain_community.chat_models import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
 
@@ -14,10 +14,9 @@ from models import Citation, VideoMetadata
 
 class RAGChain:
     def __init__(self, embedder_instance: Embedder) -> None:
-        self.llm = ChatOllama(
-            model=os.getenv("OLLAMA_MODEL", "llama3"),
-            base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
-            streaming=True,
+        self.llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=os.getenv("GROQ_API_KEY"),
         )
         self.embedder = embedder_instance
         self._memories: Dict[str, ConversationBufferWindowMemory] = {}

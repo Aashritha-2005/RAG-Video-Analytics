@@ -2,7 +2,7 @@ import os
 import asyncio
 from typing import Dict, AsyncGenerator
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_ollama import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 
@@ -10,9 +10,9 @@ from langchain_core.output_parsers import StrOutputParser
 class RAGChain:
     def __init__(self, embedder):
         self.embedder = embedder
-        self.llm = ChatOllama(
-            model=os.getenv("OLLAMA_MODEL", "llama3"),
-            base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+        self.llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=os.getenv("GROQ_API_KEY"),
         )
         self._histories: Dict[str, list] = {}
         self._session_metadata: Dict[str, dict] = {}

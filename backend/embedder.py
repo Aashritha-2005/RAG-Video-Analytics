@@ -2,19 +2,18 @@ import os
 from typing import Dict, List
 
 import chromadb
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
 from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from models import VideoMetadata
 
 
 class Embedder:
     def __init__(self) -> None:
-        self.embeddings = OllamaEmbeddings(
-            model="nomic-embed-text",
-            base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="BAAI/bge-small-en-v1.5",
         )
         self.chroma_client = chromadb.PersistentClient(
             path=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
@@ -98,6 +97,7 @@ Title: {video.title}
 Creator: {video.creator}
 Platform: {video.platform}
 Followers: {video.follower_count}
+Follower Note: {video.follower_count_note or ''}
 Views: {video.views}
 Likes: {video.likes}
 Comments: {video.comments}
