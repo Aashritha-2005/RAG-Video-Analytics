@@ -9,6 +9,8 @@ from fastapi.responses import StreamingResponse
 
 
 load_dotenv()
+import sys
+sys.path.append(os.path.dirname(__file__))
 
 from embedder import embedder
 from models import ChatRequest, ProcessResponse, VideoInput
