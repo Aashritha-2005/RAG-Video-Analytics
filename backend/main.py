@@ -8,6 +8,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
+if "torch" in sys.modules:
+    raise RuntimeError("torch must not be imported — will OOM on Render free tier")
+
 sys.path.append(os.path.dirname(__file__))
 load_dotenv()
 
