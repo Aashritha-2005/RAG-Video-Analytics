@@ -1,7 +1,9 @@
+import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import requests
 import yt_dlp
 from youtube_transcript_api import YouTubeTranscriptApi
 
@@ -29,35 +31,23 @@ class VideoProcessor:
 
     def extract_youtube(self, url: str, video_id: str) -> VideoMetadata:
         youtube_id = self._parse_youtube_video_id(url)
-        info = self._extract_ytdlp_info(url)
-
-        title = str(info.get("title") or "Untitled YouTube video")
-        description = str(info.get("description") or "")
+        info = self._fetch_youtube_api(youtube_id)
         transcript_text = self._get_youtube_transcript_text(youtube_id)
-
-        views = self._safe_int(info.get("view_count"))
-        likes = self._safe_int(info.get("like_count"))
-        comments = self._safe_int(info.get("comment_count"))
-        follower_count = self._optional_int(
-            info.get("channel_follower_count")
-            or info.get("channel_follower_count_estimate")
-            or info.get("uploader_follower_count")
-        )
 
         return VideoMetadata(
             video_id=video_id,
             url=url,
             platform="youtube",
-            title=title,
-            creator=str(info.get("uploader") or info.get("channel") or "Unknown creator"),
-            follower_count=follower_count,
-            views=views,
-            likes=likes,
-            comments=comments,
-            hashtags=self._normalize_hashtags(info.get("tags") or []),
-            upload_date=self._format_youtube_date(info.get("upload_date")),
-            duration_seconds=self._safe_int(info.get("duration")),
-            engagement_rate=self._engagement_rate(likes, comments, views),
+            title=info["title"],
+            creator=info["creator"],
+            follower_count=info["follower_count"],
+            views=info["views"],
+            likes=info["likes"],
+            comments=info["comments"],
+            hashtags=info["hashtags"],
+            upload_date=info["upload_date"],
+            duration_seconds=info["duration_seconds"],
+            engagement_rate=self._engagement_rate(info["likes"], info["comments"], info["views"]),
             transcript=transcript_text,
         )
 
@@ -71,9 +61,7 @@ class VideoProcessor:
                     "video_id": video_id,
                     "url": url,
                     "platform": "instagram",
-                    "errors": {
-                        "yt_dlp": str(ytdlp_exc),
-                    },
+                    "errors": {"yt_dlp": str(ytdlp_exc)},
                 }
             ) from ytdlp_exc
 
@@ -91,11 +79,70 @@ class VideoProcessor:
                     "video_id": video_id,
                     "url": url,
                     "platform": self._safe_platform(url),
-                    "errors": {
-                        "processing": str(exc),
-                    },
+                    "errors": {"processing": str(exc)},
                 }
             ) from exc
+
+    def _fetch_youtube_api(self, youtube_id: str) -> Dict[str, Any]:
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY not set")
+
+        # Fetch video details
+        video_url = (
+            f"https://www.googleapis.com/youtube/v3/videos"
+            f"?part=snippet,statistics,contentDetails&id={youtube_id}&key={api_key}"
+        )
+        resp = requests.get(video_url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+        if not data.get("items"):
+            raise ValueError(f"YouTube video {youtube_id} not found via API")
+
+        item = data["items"][0]
+        snippet = item.get("snippet", {})
+        stats = item.get("statistics", {})
+        content = item.get("contentDetails", {})
+
+        channel_id = snippet.get("channelId", "")
+        follower_count = None
+        if channel_id:
+            ch_url = (
+                f"https://www.googleapis.com/youtube/v3/channels"
+                f"?part=statistics&id={channel_id}&key={api_key}"
+            )
+            ch_resp = requests.get(ch_url, timeout=10)
+            if ch_resp.ok:
+                ch_data = ch_resp.json()
+                if ch_data.get("items"):
+                    follower_count = self._optional_int(
+                        ch_data["items"][0].get("statistics", {}).get("subscriberCount")
+                    )
+
+        # Parse ISO 8601 duration
+        duration_seconds = self._parse_iso_duration(content.get("duration", ""))
+
+        return {
+            "title": snippet.get("title", "Untitled"),
+            "creator": snippet.get("channelTitle", "Unknown"),
+            "follower_count": follower_count,
+            "views": self._safe_int(stats.get("viewCount")),
+            "likes": self._safe_int(stats.get("likeCount")),
+            "comments": self._safe_int(stats.get("commentCount")),
+            "hashtags": self._normalize_hashtags(snippet.get("tags") or []),
+            "upload_date": snippet.get("publishedAt", "")[:10],
+            "duration_seconds": duration_seconds,
+        }
+
+    def _parse_iso_duration(self, duration: str) -> int:
+        match = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", duration)
+        if not match:
+            return 0
+        hours = int(match.group(1) or 0)
+        minutes = int(match.group(2) or 0)
+        seconds = int(match.group(3) or 0)
+        return hours * 3600 + minutes * 60 + seconds
 
     def _extract_instagram_ytdlp(self, url: str, video_id: str) -> VideoMetadata:
         ydl_opts = {"quiet": True, "skip_download": True}
@@ -111,12 +158,11 @@ class VideoProcessor:
         follower_count = self._optional_int(
             info.get("uploader_follower_count")
             or info.get("channel_follower_count")
-            or info.get("channel_follower_count_estimate")
         )
         follower_count_note = None if follower_count is not None else "unavailable without auth"
         transcript = description.strip()
         if len(transcript) < 20:
-            raise ValueError("Instagram caption/transcript unavailable from yt-dlp. Whisper fallback is disabled on Render.")
+            raise ValueError("Instagram caption/transcript unavailable from yt-dlp.")
 
         return VideoMetadata(
             video_id=video_id,
@@ -157,19 +203,6 @@ class VideoProcessor:
             raise ValueError("Could not parse Instagram shortcode from URL.")
         return match.group(1)
 
-    def _extract_ytdlp_info(self, url: str) -> Dict[str, Any]:
-        opts = {
-            "quiet": True,
-            "skip_download": True,
-            "extract_flat": False,
-            "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9",
-            },
-        }
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            return ydl.extract_info(url, download=False) or {}
-
     def _get_youtube_transcript_text(self, youtube_id: str) -> str:
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(youtube_id)
@@ -178,8 +211,8 @@ class VideoProcessor:
             if transcript_text:
                 return transcript_text
         except Exception as exc:
-            raise ValueError("YouTube transcript unavailable. Whisper fallback is disabled on Render.") from exc
-        raise ValueError("YouTube transcript is empty. Whisper fallback is disabled on Render.")
+            raise ValueError("YouTube transcript unavailable.") from exc
+        raise ValueError("YouTube transcript is empty.")
 
     def _format_youtube_date(self, raw_date: Optional[str]) -> str:
         if not raw_date:
