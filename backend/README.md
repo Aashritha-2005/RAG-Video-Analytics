@@ -7,12 +7,12 @@ FastAPI backend for comparing one YouTube video and one Instagram Reel/Post with
 - Accepts two video URLs: Video A and Video B
 - Detects YouTube and Instagram URLs
 - Extracts transcripts, captions, and platform metadata
-- Falls back to title/description for YouTube when transcripts are unavailable
-- Falls back to yt-dlp metadata and Whisper transcription for Instagram when direct metadata access is blocked
+- Returns an error when YouTube transcripts are unavailable instead of loading local Whisper
+- Falls back to yt-dlp metadata for Instagram when direct metadata access is blocked
 - Computes engagement rate as `(likes + comments) / views * 100`
 - Chunks transcripts and metadata summaries into ChromaDB
 - Uses Groq `llama-3.3-70b-versatile` for chat
-- Uses HuggingFace `BAAI/bge-small-en-v1.5` embeddings in-process
+- Uses Google Generative AI API embeddings
 - Maintains conversation memory per processed session
 - Streams responses over Server-Sent Events and returns citations for retrieved chunks
 
@@ -20,7 +20,7 @@ FastAPI backend for comparing one YouTube video and one Instagram Reel/Post with
 
 - Python 3.11+
 - Free Groq API key
-- FFmpeg installed for Whisper and audio extraction
+- Google API key with Generative AI access
 
 ## Setup
 
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Set `GROQ_API_KEY` in `.env`, then start the API:
+Set `GROQ_API_KEY` and `GOOGLE_API_KEY` in `.env`, then start the API:
 
 ```bash
 uvicorn main:app --host 127.0.0.1 --port 8000
@@ -87,6 +87,6 @@ curl -X POST http://127.0.0.1:8000/chat \
 
 ## Notes
 
-Instagram metadata access may depend on public availability and rate limits. Whisper fallback requires downloading audio through `yt-dlp`, so FFmpeg must be available on your system.
+Instagram metadata access may depend on public availability and rate limits. Whisper is intentionally not installed for Render free tier deployments because it loads PyTorch and can exceed 512MB RAM.
 
 On Render free tier, ChromaDB is configured to use `/tmp/chroma_db`, which is ephemeral. The vector database resets on each deploy or restart, so each demo session should process its videos before chat.

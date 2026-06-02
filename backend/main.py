@@ -9,14 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 sys.path.append(os.path.dirname(__file__))
+load_dotenv()
 
 from embedder import embedder
 from models import ChatRequest, ProcessResponse, VideoInput
 from rag_chain import RAGChain
 from video_processor import VideoProcessingError, processor
 
-
-load_dotenv()
 
 app = FastAPI(
     title="RAG Video Analytics Chatbot",

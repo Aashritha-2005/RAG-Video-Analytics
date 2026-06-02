@@ -1,11 +1,8 @@
-import os
 import re
-import tempfile
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import instaloader
-import whisper
 import yt_dlp
 from instaloader import Post
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -38,7 +35,7 @@ class VideoProcessor:
 
         title = str(info.get("title") or "Untitled YouTube video")
         description = str(info.get("description") or "")
-        transcript_text = self._get_youtube_transcript_text(youtube_id, title, description)
+        transcript_text = self._get_youtube_transcript_text(youtube_id)
 
         views = self._safe_int(info.get("view_count"))
         likes = self._safe_int(info.get("like_count"))
@@ -119,7 +116,7 @@ class VideoProcessor:
         username = post.owner_username or "Unknown creator"
         transcript = caption.strip()
         if len(transcript) < 20:
-            transcript = self._transcribe_instagram_audio(url, fallback_text=caption)
+            raise ValueError("Instagram caption/transcript unavailable. Whisper fallback is disabled on Render.")
 
         likes = self._safe_int(post.likes)
         comments = self._safe_int(post.comments)
@@ -172,7 +169,7 @@ class VideoProcessor:
         follower_count_note = None if follower_count is not None else "unavailable without auth"
         transcript = description.strip()
         if len(transcript) < 20:
-            transcript = self._transcribe_instagram_audio(url, fallback_text=description)
+            raise ValueError("Instagram caption/transcript unavailable from yt-dlp. Whisper fallback is disabled on Render.")
 
         return VideoMetadata(
             video_id=video_id,
@@ -218,42 +215,16 @@ class VideoProcessor:
         with yt_dlp.YoutubeDL(opts) as ydl:
             return ydl.extract_info(url, download=False) or {}
 
-    def _get_youtube_transcript_text(self, youtube_id: str, title: str, description: str) -> str:
+    def _get_youtube_transcript_text(self, youtube_id: str) -> str:
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(youtube_id)
             transcript_text = " ".join(str(segment.get("text", "")) for segment in transcript_list)
-            return transcript_text.strip() or f"{title} {description}".strip()
-        except Exception:
-            return f"{title} {description}".strip()
-
-    def _transcribe_instagram_audio(self, url: str, fallback_text: str) -> str:
-        temp_path = tempfile.mktemp(suffix=".mp3")
-        try:
-            opts = {
-                "quiet": True,
-                "skip_download": False,
-                "format": "bestaudio/best",
-                "outtmpl": temp_path,
-                "postprocessors": [
-                    {
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }
-                ],
-            }
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                ydl.download([url])
-            model = whisper.load_model("base")
-            result = model.transcribe(temp_path)
-            text = str(result.get("text", "")).strip()
-            return text or fallback_text or "No transcript or caption available."
-        except Exception:
-            return fallback_text or "No transcript or caption available."
-        finally:
-            for candidate in {temp_path, f"{temp_path}.mp3"}:
-                if os.path.exists(candidate):
-                    os.remove(candidate)
+            transcript_text = transcript_text.strip()
+            if transcript_text:
+                return transcript_text
+        except Exception as exc:
+            raise ValueError("YouTube transcript unavailable. Whisper fallback is disabled on Render.") from exc
+        raise ValueError("YouTube transcript is empty. Whisper fallback is disabled on Render.")
 
     def _format_youtube_date(self, raw_date: Optional[str]) -> str:
         if not raw_date:

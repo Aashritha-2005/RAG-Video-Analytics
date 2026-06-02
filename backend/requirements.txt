@@ -4,13 +4,13 @@ langchain
 langchain-community
 langchain-chroma
 langchain-groq
-langchain-huggingface
+langchain-google-genai
 chromadb
-sentence-transformers
 youtube-transcript-api
 yt-dlp
 instaloader
-openai-whisper
 httpx
 python-dotenv
 pydantic
+
+# Optional local only: openai-whisper

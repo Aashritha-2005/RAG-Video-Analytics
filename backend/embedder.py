@@ -4,7 +4,7 @@ from typing import Dict, List
 import chromadb
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from models import VideoMetadata
@@ -12,8 +12,9 @@ from models import VideoMetadata
 
 class Embedder:
     def __init__(self) -> None:
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-small-en-v1.5",
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
         )
         self.chroma_client = chromadb.PersistentClient(
             path=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
