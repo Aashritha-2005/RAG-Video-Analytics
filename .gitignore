@@ -11,3 +11,4 @@ frontend/dist/
 *.dylib
 *.so
 *.pth
+backend/__pycache__/
