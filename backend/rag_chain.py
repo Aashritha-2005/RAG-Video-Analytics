@@ -40,7 +40,13 @@ VIDEO B: {video_b.title} by {video_b.creator} on {video_b.platform}
 
 Always cite sources as [Video A] or [Video B]. Be specific and data-driven.
 Use the retrieved transcript chunks to support your analysis.
-When comparing engagement, always state the exact engagement rates."""
+When comparing engagement, always state the exact engagement rates.
+Always format your response as bullet points. Never write long paragraphs.
+Use this structure:
+- [Point 1]
+- [Point 2]
+- [Point 3]
+Start every response with a brief one-line summary, then bullet points."""
 
     async def stream_response(self, session_id: str, question: str) -> AsyncGenerator[str, None]:
         retriever = self.embedder.get_retriever(session_id)

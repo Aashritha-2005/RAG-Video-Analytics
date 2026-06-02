@@ -9,10 +9,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
 
   function stripCitations(text: string): string {
-    return text
-      .replace(/\[CITATIONS\][\s\S]*?\[\/CITATIONS\]/g, '')
-      .replace(/\[CITATIONS\][\s\S]*$/g, '')
-      .trim()
+    return text.replace(/\[CITATIONS\][\s\S]*?\[\/CITATIONS\]/g, '').replace(/\[Video [AB]\]/g, '').trim()
   }
 
   function renderInline(text: string): ReactNode[] {
@@ -25,7 +22,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   function renderMarkdown(text: string): ReactNode[] {
-    const blocks = stripCitations(text)
+    const blocks = text
       .split(/\n{2,}/)
       .map((block) => block.trim())
       .filter(Boolean)
@@ -91,7 +88,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             </div>
           ) : (
             <>
-              <div className="space-y-3 leading-7">{renderMarkdown(message.content)}</div>
+              <div className="space-y-3 leading-7">{renderMarkdown(visibleContent)}</div>
               {message.isStreaming && <span className="cursor-blink" />}
             </>
           )}
