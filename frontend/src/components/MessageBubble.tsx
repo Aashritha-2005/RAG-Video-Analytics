@@ -1,3 +1,4 @@
+import { ReactNode } from 'react'
 import { ChatMessage } from '../types'
 
 interface MessageBubbleProps {
@@ -7,21 +8,71 @@ interface MessageBubbleProps {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
 
-  function formatMessage(text: string): string {
+  function stripCitations(text: string): string {
     return text
-      // Bold: **text** -> <strong>text</strong>
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Numbered points: "1. text" at start of line -> proper list item with line break before
-      .replace(/(\d+\.\s)/g, '<br/><strong>$1</strong>')
-      // Bullet points: "* text" or "- text" at start -> bullet
-      .replace(/^[\*\-]\s(.+)/gm, '• $1')
-      // Double newlines -> paragraph breaks
-      .replace(/\n\n/g, '<br/><br/>')
-      // Single newlines -> line breaks
-      .replace(/\n/g, '<br/>')
-      // Clean up leading <br/>
-      .replace(/^<br\/>/, '')
+      .replace(/\[CITATIONS\][\s\S]*?\[\/CITATIONS\]/g, '')
+      .replace(/\[CITATIONS\][\s\S]*$/g, '')
+      .trim()
   }
+
+  function renderInline(text: string): ReactNode[] {
+    return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>
+      }
+      return part
+    })
+  }
+
+  function renderMarkdown(text: string): ReactNode[] {
+    const blocks = stripCitations(text)
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean)
+
+    return blocks.map((block, blockIndex) => {
+      const lines = block.split('\n').map((line) => line.trim()).filter(Boolean)
+      const bulletItems = lines
+        .map((line) => line.match(/^[-*]\s+(.+)$/)?.[1])
+        .filter((item): item is string => Boolean(item))
+      const numberedItems = lines
+        .map((line) => line.match(/^\d+\.\s+(.+)$/)?.[1])
+        .filter((item): item is string => Boolean(item))
+
+      if (bulletItems.length === lines.length) {
+        return (
+          <ul key={blockIndex} className="list-disc space-y-1 pl-5">
+            {bulletItems.map((item, itemIndex) => (
+              <li key={itemIndex}>{renderInline(item)}</li>
+            ))}
+          </ul>
+        )
+      }
+
+      if (numberedItems.length === lines.length) {
+        return (
+          <ol key={blockIndex} className="list-decimal space-y-1 pl-5">
+            {numberedItems.map((item, itemIndex) => (
+              <li key={itemIndex}>{renderInline(item)}</li>
+            ))}
+          </ol>
+        )
+      }
+
+      return (
+        <p key={blockIndex}>
+          {lines.map((line, lineIndex) => (
+            <span key={lineIndex}>
+              {renderInline(line)}
+              {lineIndex < lines.length - 1 && <br />}
+            </span>
+          ))}
+        </p>
+      )
+    })
+  }
+
+  const visibleContent = stripCitations(message.content)
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -35,15 +86,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         >
           {isUser ? (
             <div style={{ whiteSpace: 'pre-wrap' }}>
-              {message.content}
+              {visibleContent}
               {message.isStreaming && <span className="cursor-blink" />}
             </div>
           ) : (
             <>
-              <div
-                dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
-                style={{ whiteSpace: 'normal', lineHeight: '1.7' }}
-              />
+              <div className="space-y-3 leading-7">{renderMarkdown(message.content)}</div>
               {message.isStreaming && <span className="cursor-blink" />}
             </>
           )}
