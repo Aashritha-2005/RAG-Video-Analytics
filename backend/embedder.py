@@ -13,8 +13,9 @@ from models import VideoMetadata
 class Embedder:
     def __init__(self) -> None:
         self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="text-embedding-004",
+            model="models/text-embedding-004",
             google_api_key=os.getenv("GOOGLE_API_KEY"),
+            task_type="retrieval_document",
         )
         self.chroma_client = chromadb.PersistentClient(
             path=os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
