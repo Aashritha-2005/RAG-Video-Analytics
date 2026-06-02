@@ -32,7 +32,7 @@ class VideoProcessor:
     def extract_youtube(self, url: str, video_id: str) -> VideoMetadata:
         youtube_id = self._parse_youtube_video_id(url)
         info = self._fetch_youtube_api(youtube_id)
-        transcript_text = self._get_youtube_transcript_text(youtube_id)
+        transcript_text = self._get_youtube_transcript_text(youtube_id, info.get("description", ""))
 
         return VideoMetadata(
             video_id=video_id,
@@ -203,7 +203,7 @@ class VideoProcessor:
             raise ValueError("Could not parse Instagram shortcode from URL.")
         return match.group(1)
 
-    def _get_youtube_transcript_text(self, youtube_id: str) -> str:
+    def _get_youtube_transcript_text(self, youtube_id: str, description: str = "") -> str:
         try:
             transcript_list = YouTubeTranscriptApi.get_transcript(youtube_id)
             transcript_text = " ".join(str(segment.get("text", "")) for segment in transcript_list)
