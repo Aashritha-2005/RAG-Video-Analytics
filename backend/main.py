@@ -1,3 +1,5 @@
+import os
+import sys
 import uuid
 from typing import AsyncGenerator
 
@@ -6,10 +8,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
+sys.path.append(os.path.dirname(__file__))
+
 from embedder import embedder
 from models import ChatRequest, ProcessResponse, VideoInput
 from rag_chain import RAGChain
-from video_processor import processor
+from video_processor import VideoProcessingError, processor
 
 
 load_dotenv()
@@ -47,8 +51,11 @@ async def health() -> dict:
 @app.post("/process", response_model=ProcessResponse)
 async def process_videos(payload: VideoInput) -> ProcessResponse:
     session_id = str(uuid.uuid4())
-    video_a = processor.process_video(payload.url_a, "A")
-    video_b = processor.process_video(payload.url_b, "B")
+    try:
+        video_a = processor.process_video(payload.url_a, "A")
+        video_b = processor.process_video(payload.url_b, "B")
+    except VideoProcessingError as exc:
+        raise HTTPException(status_code=422, detail=exc.detail) from exc
 
     try:
         embedder.chunk_and_embed(video_a, video_b, session_id)

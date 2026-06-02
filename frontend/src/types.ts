@@ -5,6 +5,7 @@ export interface VideoMetadata {
   title: string
   creator: string
   follower_count: number | null
+  follower_count_note?: string | null
   views: number
   likes: number
   comments: number

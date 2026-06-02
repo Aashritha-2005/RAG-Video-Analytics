@@ -13,6 +13,12 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from models import VideoMetadata
 
 
+class VideoProcessingError(Exception):
+    def __init__(self, detail: Dict[str, Any]) -> None:
+        self.detail = detail
+        super().__init__(str(detail))
+
+
 class VideoProcessor:
     def detect_platform(self, url: str) -> str:
         normalized_url = url.lower()
@@ -62,6 +68,45 @@ class VideoProcessor:
 
     def extract_instagram(self, url: str, video_id: str) -> VideoMetadata:
         shortcode = self._parse_instagram_shortcode(url)
+        try:
+            return self._extract_instagram_instaloader(url, video_id, shortcode)
+        except Exception as instaloader_exc:
+            try:
+                return self._extract_instagram_ytdlp(url, video_id)
+            except Exception as ytdlp_exc:
+                raise VideoProcessingError(
+                    {
+                        "video_id": video_id,
+                        "url": url,
+                        "platform": "instagram",
+                        "errors": {
+                            "instaloader": str(instaloader_exc),
+                            "yt_dlp": str(ytdlp_exc),
+                        },
+                    }
+                ) from ytdlp_exc
+
+    def process_video(self, url: str, video_id: str) -> VideoMetadata:
+        try:
+            platform = self.detect_platform(url)
+            if platform == "youtube":
+                return self.extract_youtube(url, video_id)
+            return self.extract_instagram(url, video_id)
+        except VideoProcessingError:
+            raise
+        except Exception as exc:
+            raise VideoProcessingError(
+                {
+                    "video_id": video_id,
+                    "url": url,
+                    "platform": self._safe_platform(url),
+                    "errors": {
+                        "processing": str(exc),
+                    },
+                }
+            ) from exc
+
+    def _extract_instagram_instaloader(self, url: str, video_id: str, shortcode: str) -> VideoMetadata:
         loader = instaloader.Instaloader(
             quiet=True,
             download_videos=False,
@@ -79,14 +124,12 @@ class VideoProcessor:
         likes = self._safe_int(post.likes)
         comments = self._safe_int(post.comments)
         views = self._safe_int(getattr(post, "video_view_count", None))
-        if views == 0:
-            views = likes * 15
-
         follower_count = None
+        follower_count_note = None
         try:
             follower_count = self._optional_int(post.owner_profile.followers)
         except Exception:
-            follower_count = None
+            follower_count_note = "unavailable without auth"
 
         hashtags = re.findall(r"#\w+", caption)
         title = caption.strip()[:80] if caption.strip() else f"Instagram Reel by {username}"
@@ -99,6 +142,7 @@ class VideoProcessor:
             title=title,
             creator=username,
             follower_count=follower_count,
+            follower_count_note=follower_count_note,
             views=views,
             likes=likes,
             comments=comments,
@@ -109,29 +153,44 @@ class VideoProcessor:
             transcript=transcript or title,
         )
 
-    def process_video(self, url: str, video_id: str) -> VideoMetadata:
-        try:
-            platform = self.detect_platform(url)
-            if platform == "youtube":
-                return self.extract_youtube(url, video_id)
-            return self.extract_instagram(url, video_id)
-        except Exception as exc:
-            return VideoMetadata(
-                video_id=video_id,
-                url=url,
-                platform=self._safe_platform(url),
-                title=f"Processing failed for Video {video_id}",
-                creator="Unknown creator",
-                follower_count=None,
-                views=0,
-                likes=0,
-                comments=0,
-                hashtags=[],
-                upload_date="",
-                duration_seconds=0,
-                engagement_rate=0.0,
-                transcript=f"Unable to extract video data: {exc}",
-            )
+    def _extract_instagram_ytdlp(self, url: str, video_id: str) -> VideoMetadata:
+        ydl_opts = {"quiet": True, "skip_download": True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False) or {}
+
+        description = str(info.get("description") or "")
+        title = str(info.get("title") or description[:80] or "Untitled Instagram Reel")
+        uploader = str(info.get("uploader") or info.get("uploader_id") or "Unknown creator")
+        likes = self._safe_int(info.get("like_count"))
+        comments = self._safe_int(info.get("comment_count"))
+        views = self._safe_int(info.get("view_count"))
+        follower_count = self._optional_int(
+            info.get("uploader_follower_count")
+            or info.get("channel_follower_count")
+            or info.get("channel_follower_count_estimate")
+        )
+        follower_count_note = None if follower_count is not None else "unavailable without auth"
+        transcript = description.strip()
+        if len(transcript) < 20:
+            transcript = self._transcribe_instagram_audio(url, fallback_text=description)
+
+        return VideoMetadata(
+            video_id=video_id,
+            url=url,
+            platform="instagram",
+            title=title,
+            creator=uploader,
+            follower_count=follower_count,
+            follower_count_note=follower_count_note,
+            views=views,
+            likes=likes,
+            comments=comments,
+            hashtags=self._normalize_hashtags(info.get("tags") or []),
+            upload_date=self._format_youtube_date(info.get("upload_date")),
+            duration_seconds=self._safe_int(info.get("duration")),
+            engagement_rate=self._engagement_rate(likes, comments, views),
+            transcript=transcript or title,
+        )
 
     def _parse_youtube_video_id(self, url: str) -> str:
         patterns = [

@@ -16,6 +16,7 @@ class VideoMetadata(BaseModel):
     title: str
     creator: str
     follower_count: Optional[int]
+    follower_count_note: Optional[str] = None
     views: int = Field(ge=0)
     likes: int = Field(ge=0)
     comments: int = Field(ge=0)
