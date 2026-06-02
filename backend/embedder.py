@@ -14,7 +14,7 @@ from models import VideoMetadata
 class GoogleEmbeddings(Embeddings):
     def __init__(self) -> None:
         self.api_key = os.getenv("GOOGLE_API_KEY")
-        self.model = "text-embedding-004"
+        self.model = "gemini-embedding-001"
         self.url = (
             f"https://generativelanguage.googleapis.com/v1/models/"
             f"{self.model}:embedContent?key={self.api_key}"
