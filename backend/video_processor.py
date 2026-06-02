@@ -210,9 +210,11 @@ class VideoProcessor:
             transcript_text = transcript_text.strip()
             if transcript_text:
                 return transcript_text
-        except Exception as exc:
-            raise ValueError("YouTube transcript unavailable.") from exc
-        raise ValueError("YouTube transcript is empty.")
+        except Exception:
+            pass
+        if description.strip():
+            return description.strip()
+        return f"No transcript available for video {youtube_id}."
 
     def _format_youtube_date(self, raw_date: Optional[str]) -> str:
         if not raw_date:
