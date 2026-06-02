@@ -19,9 +19,9 @@ export function streamChat(
   sessionId: string,
   message: string,
   onToken: (token: string) => void,
+  onCitations: (citations: Citation[]) => void,
   onDone: () => void,
   onError: (err: Error) => void,
-  citations?: Citation[],
 ) {
   fetch(`${API_BASE}/chat/stream`, {
     method: 'POST',
@@ -46,4 +46,3 @@ export function streamChat(
     onDone()
   }).catch(onError)
 }
-// build Tue Jun  2 19:18:08 IST 2026
