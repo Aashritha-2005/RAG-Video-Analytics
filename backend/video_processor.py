@@ -158,7 +158,15 @@ class VideoProcessor:
         return match.group(1)
 
     def _extract_ytdlp_info(self, url: str) -> Dict[str, Any]:
-        opts = {"quiet": True, "skip_download": True, "extract_flat": False}
+        opts = {
+            "quiet": True,
+            "skip_download": True,
+            "extract_flat": False,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        }
         with yt_dlp.YoutubeDL(opts) as ydl:
             return ydl.extract_info(url, download=False) or {}
 
