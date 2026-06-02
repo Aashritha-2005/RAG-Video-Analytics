@@ -84,9 +84,9 @@ class VideoProcessor:
             ) from exc
 
     def _fetch_youtube_api(self, youtube_id: str) -> Dict[str, Any]:
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("YOUTUBE_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            raise ValueError("GOOGLE_API_KEY not set")
+            raise ValueError("YOUTUBE_API_KEY not set")
 
         # Fetch video details
         video_url = (
