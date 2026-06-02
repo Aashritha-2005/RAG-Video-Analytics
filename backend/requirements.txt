@@ -20,3 +20,4 @@ chromadb==0.4.15
 tenacity==8.2.3
 langchain-groq==0.0.1
 langchain-google-genai==0.0.5
+langchain-text-splitters==0.0.1
